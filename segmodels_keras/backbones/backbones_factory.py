@@ -47,36 +47,6 @@ class BackbonesFactory:
                 "conv1_relu",
             ),
         ),
-        "ResNet50V2": (
-            ka.ResNet50V2,
-            ka.resnet_v2.preprocess_input,
-            (
-                "conv4_block6_1_relu",
-                "conv3_block4_1_relu",
-                "conv2_block3_1_relu",
-                "conv1_conv",
-            ),
-        ),
-        "ResNet101V2": (
-            ka.ResNet101V2,
-            ka.resnet_v2.preprocess_input,
-            (
-                "conv4_block23_1_relu",
-                "conv3_block4_1_relu",
-                "conv2_block3_1_relu",
-                "conv1_conv",
-            ),
-        ),
-        "ResNet152V2": (
-            ka.ResNet152V2,
-            ka.resnet_v2.preprocess_input,
-            (
-                "conv4_block36_1_relu",
-                "conv3_block8_1_relu",
-                "conv2_block3_1_relu",
-                "conv1_conv",
-            ),
-        ),
         # VGG
         "vgg16": (
             ka.vgg16.VGG16,
