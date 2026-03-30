@@ -1,6 +1,8 @@
 # Change Log
 
-**Version 2.0.0**
+### segmodels_keras
+
+**Version 0.1.0**
 
 ###### Deprecation info
  - Support of keras v1 was dropped.
@@ -13,6 +15,8 @@
  - Add extra backbones: resnet50v2, resnet101v2, resnet152v2 and efficientnetv2m (#6)
  - Add support for keras v3 (#5)
  - General code improvements by using ruff (#4)
+
+### segmentation_models
 
 **Version 1.0.0**
 
