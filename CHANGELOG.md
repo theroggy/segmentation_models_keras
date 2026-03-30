@@ -3,7 +3,7 @@
 **Version 2.0.0**
 
 ###### Deprecation info
- - Support of keras 1 was dropped.
+ - Support of keras v1 was dropped.
  - Support for following backbones was dropped:
      - resnet18, resnet34
      - seresnet18, seresnet34, seresnet101, seresnet152
@@ -11,7 +11,7 @@
 
 ###### Areas of improvement
  - Add extra backbones: resnet50v2, resnet101v2, resnet152v2 and efficientnetv2m (#6)
- - Use/support more recent versions of keras (#5)
+ - Add support for keras v3 (#5)
  - General code improvements by using ruff (#4)
 
 **Version 1.0.0**
