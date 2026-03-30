@@ -1,5 +1,4 @@
 import os
-import random
 
 import numpy as np
 import pytest
@@ -16,9 +15,13 @@ else:
     raise ValueError(f"Incorrect framework {sm.framework()}")
 
 
+def str2bool(v):
+    return v.lower() in ("yes", "true", "t", "1")
+
+
 def get_backbones():
     is_travis = str2bool(os.environ.get("TRAVIS", "False"))
-    exclude = ["senet154", "efficientnetb6", "efficientnetb7"]
+    exclude = ["efficientnetb6", "efficientnetb7"]
     backbones = get_available_backbone_names()
 
     if is_travis:
@@ -32,13 +35,9 @@ BACKBONES = get_backbones()
 def _select_names(names):
     is_full = str2bool(os.environ.get("FULL_TEST", "False"))
     if not is_full:
-        return [random.choice(names)]
+        return ["resnet50", "inceptionresnetv2", "efficientnetb0"]
     else:
         return names
-
-
-def str2bool(v):
-    return v.lower() in ("yes", "true", "t", "1")
 
 
 def keras_test(func):

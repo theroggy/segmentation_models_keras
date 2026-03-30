@@ -1,14 +1,9 @@
-from keras_applications import get_submodules_from_kwargs
+from keras import backend, layers, models
+from keras import utils as keras_utils
 
 from ..backbones.backbones_factory import Backbones
 from ._common_blocks import Conv2dBn
-from ._utils import filter_keras_submodules, freeze_model
-
-backend = None
-layers = None
-models = None
-keras_utils = None
-
+from ._utils import freeze_model
 
 # ---------------------------------------------------------------------
 #  Utility functions
@@ -88,7 +83,7 @@ def SpatialContextBlock(
 
     def wrapper(input_tensor):
         # extract input feature maps size (h, and w dimensions)
-        input_shape = backend.int_shape(input_tensor)
+        input_shape = input_tensor.shape
         spatial_size = (
             input_shape[1:3]
             if backend.image_data_format() == "channels_last"
@@ -223,11 +218,6 @@ def PSPNet(
         https://arxiv.org/pdf/1612.01105.pdf
 
     """
-
-    global backend, layers, models, keras_utils
-    submodule_args = filter_keras_submodules(kwargs)
-    backend, layers, models, keras_utils = get_submodules_from_kwargs(submodule_args)
-
     # control image input shape
     check_input_shape(input_shape, downsample_factor)
 

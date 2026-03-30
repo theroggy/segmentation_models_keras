@@ -9,7 +9,9 @@ and that the input preprocessing function is also different (same as Xception).
 
 import os
 
-from keras_applications import get_submodules_from_kwargs, imagenet_utils
+from keras import backend, layers, models
+from keras import utils as keras_utils
+from keras.applications import imagenet_utils
 
 WEIGHTS_PATH = (
     "https://github.com/fchollet/deep-learning-models/"
@@ -21,11 +23,6 @@ WEIGHTS_PATH_NO_TOP = (
     "releases/download/v0.5/"
     "inception_v3_weights_tf_dim_ordering_tf_kernels_notop.h5"
 )
-
-backend = None
-layers = None
-models = None
-keras_utils = None
 
 
 def conv2d_bn(x, filters, num_row, num_col, padding="same", strides=(1, 1), name=None):
@@ -73,7 +70,7 @@ def InceptionV3(
     input_shape=None,
     pooling=None,
     classes=1000,
-    **kwargs,
+    **kwargs,  # noqa: ARG001
 ):
     """Instantiates the Inception v3 architecture.
     Optionally loads weights pre-trained on ImageNet.
@@ -114,9 +111,6 @@ def InceptionV3(
         ValueError: in case of invalid argument for `weights`,
             or invalid input shape.
     """
-    global backend, layers, models, keras_utils
-    backend, layers, models, keras_utils = get_submodules_from_kwargs(kwargs)
-
     if not (weights in {"imagenet", None} or os.path.exists(weights)):
         raise ValueError(
             "The `weights` argument should be either "
@@ -132,7 +126,7 @@ def InceptionV3(
         )
 
     # Determine proper input shape
-    input_shape = imagenet_utils._obtain_input_shape(
+    input_shape = _obtain_input_shape(
         input_shape,
         default_size=299,
         min_size=75,
@@ -381,3 +375,120 @@ def preprocess_input(x, **kwargs):
         Preprocessed array.
     """
     return imagenet_utils.preprocess_input(x, mode="tf", **kwargs)
+
+
+def _obtain_input_shape(
+    input_shape, default_size, min_size, data_format, require_flatten, weights=None
+):
+    """Internal utility to compute/validate a model's input shape.
+
+    # Arguments
+        input_shape: Either None (will return the default network input shape),
+            or a user-provided shape to be validated.
+        default_size: Default input width/height for the model.
+        min_size: Minimum input width/height accepted by the model.
+        data_format: Image data format to use.
+        require_flatten: Whether the model is expected to
+            be linked to a classifier via a Flatten layer.
+        weights: One of `None` (random initialization)
+            or 'imagenet' (pre-training on ImageNet).
+            If weights='imagenet' input channels must be equal to 3.
+
+    # Returns
+        An integer shape tuple (may include None entries).
+
+    # Raises
+        ValueError: In case of invalid argument values.
+    """
+    if weights != "imagenet" and input_shape and len(input_shape) == 3:
+        if data_format == "channels_first":
+            if input_shape[0] not in {1, 3}:
+                warnings.warn(  # noqa: B028
+                    "This model usually expects 1 or 3 input channels. "
+                    "However, it was passed an input_shape with "
+                    + str(input_shape[0])
+                    + " input channels."
+                )
+            default_shape = (input_shape[0], default_size, default_size)
+        else:
+            if input_shape[-1] not in {1, 3}:
+                warnings.warn(  # noqa: B028
+                    "This model usually expects 1 or 3 input channels. "
+                    "However, it was passed an input_shape with "
+                    + str(input_shape[-1])
+                    + " input channels."
+                )
+            default_shape = (default_size, default_size, input_shape[-1])
+    else:
+        if data_format == "channels_first":
+            default_shape = (3, default_size, default_size)
+        else:
+            default_shape = (default_size, default_size, 3)
+    if weights == "imagenet" and require_flatten:
+        if input_shape is not None:
+            if input_shape != default_shape:
+                raise ValueError(
+                    "When setting `include_top=True` "
+                    "and loading `imagenet` weights, "
+                    "`input_shape` should be " + str(default_shape) + "."
+                )
+        return default_shape
+    if input_shape:
+        if data_format == "channels_first":
+            if input_shape is not None:
+                if len(input_shape) != 3:
+                    raise ValueError("`input_shape` must be a tuple of three integers.")
+                if input_shape[0] != 3 and weights == "imagenet":
+                    raise ValueError(
+                        "The input must have 3 channels; got "
+                        "`input_shape=" + str(input_shape) + "`"
+                    )
+                if (input_shape[1] is not None and input_shape[1] < min_size) or (
+                    input_shape[2] is not None and input_shape[2] < min_size
+                ):
+                    raise ValueError(
+                        "Input size must be at least "
+                        + str(min_size)
+                        + "x"
+                        + str(min_size)
+                        + "; got `input_shape="
+                        + str(input_shape)
+                        + "`"
+                    )
+        else:
+            if input_shape is not None:
+                if len(input_shape) != 3:
+                    raise ValueError("`input_shape` must be a tuple of three integers.")
+                if input_shape[-1] != 3 and weights == "imagenet":
+                    raise ValueError(
+                        "The input must have 3 channels; got "
+                        "`input_shape=" + str(input_shape) + "`"
+                    )
+                if (input_shape[0] is not None and input_shape[0] < min_size) or (
+                    input_shape[1] is not None and input_shape[1] < min_size
+                ):
+                    raise ValueError(
+                        "Input size must be at least "
+                        + str(min_size)
+                        + "x"
+                        + str(min_size)
+                        + "; got `input_shape="
+                        + str(input_shape)
+                        + "`"
+                    )
+    else:
+        if require_flatten:
+            input_shape = default_shape
+        else:
+            if data_format == "channels_first":
+                input_shape = (3, None, None)
+            else:
+                input_shape = (None, None, 3)
+    if require_flatten:
+        if None in input_shape:
+            raise ValueError(
+                "If `include_top` is True, "
+                "you should specify a static `input_shape`. "
+                "Got `input_shape=" + str(input_shape) + "`"
+            )
+    return input_shape

@@ -1,14 +1,9 @@
-from keras_applications import get_submodules_from_kwargs
+from keras import backend, layers, models
+from keras import utils as keras_utils
 
 from ..backbones.backbones_factory import Backbones
 from ._common_blocks import Conv2dBn
-from ._utils import filter_keras_submodules, freeze_model
-
-backend = None
-layers = None
-models = None
-keras_utils = None
-
+from ._utils import freeze_model
 
 # ---------------------------------------------------------------------
 #  Utility functions
@@ -75,10 +70,8 @@ def DecoderUpsamplingX2Block(filters, stage, use_batchnorm):
     channels_axis = 3 if backend.image_data_format() == "channels_last" else 1
 
     def wrapper(input_tensor, skip=None):
-        input_filters = backend.int_shape(input_tensor)[channels_axis]
-        output_filters = (
-            backend.int_shape(skip)[channels_axis] if skip is not None else filters
-        )
+        input_filters = input_tensor.shape[channels_axis]
+        output_filters = skip.shape[channels_axis] if skip is not None else filters
 
         x = Conv1x1BnReLU(input_filters // 4, use_batchnorm, name=conv_block1_name)(
             input_tensor
@@ -105,10 +98,8 @@ def DecoderTransposeX2Block(filters, stage, use_batchnorm):
     channels_axis = bn_axis = 3 if backend.image_data_format() == "channels_last" else 1
 
     def wrapper(input_tensor, skip=None):
-        input_filters = backend.int_shape(input_tensor)[channels_axis]
-        output_filters = (
-            backend.int_shape(skip)[channels_axis] if skip is not None else filters
-        )
+        input_filters = input_tensor.shape[channels_axis]
+        output_filters = skip.shape[channels_axis] if skip is not None else filters
 
         x = Conv1x1BnReLU(input_filters // 4, use_batchnorm, name=conv_block1_name)(
             input_tensor
@@ -253,11 +244,6 @@ def Linknet(
     .. _Linknet:
         https://arxiv.org/pdf/1707.03718.pdf
     """
-
-    global backend, layers, models, keras_utils
-    submodule_args = filter_keras_submodules(kwargs)
-    backend, layers, models, keras_utils = get_submodules_from_kwargs(submodule_args)
-
     if decoder_block_type == "upsampling":
         decoder_block = DecoderUpsamplingX2Block
     elif decoder_block_type == "transpose":

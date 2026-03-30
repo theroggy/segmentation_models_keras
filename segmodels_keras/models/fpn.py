@@ -1,14 +1,9 @@
-from keras_applications import get_submodules_from_kwargs
+from keras import backend, layers, models
+from keras import utils as keras_utils
 
 from ..backbones.backbones_factory import Backbones
 from ._common_blocks import Conv2dBn
-from ._utils import filter_keras_submodules, freeze_model
-
-backend = None
-layers = None
-models = None
-keras_utils = None
-
+from ._utils import freeze_model
 
 # ---------------------------------------------------------------------
 #  Utility functions
@@ -73,7 +68,7 @@ def FPNBlock(pyramid_filters, stage):
         # if input tensor channels not equal to pyramid channels
         # we will not be able to sum input tensor and skip
         # so add extra conv layer to transform it
-        input_filters = backend.int_shape(input_tensor)[channels_axis]
+        input_filters = input_tensor.shape[channels_axis]
         if input_filters != pyramid_filters:
             input_tensor = layers.Conv2D(
                 filters=pyramid_filters,
@@ -249,10 +244,6 @@ def FPN(
         http://presentations.cocodataset.org/COCO17-Stuff-FAIR.pdf
 
     """
-    global backend, layers, models, keras_utils
-    submodule_args = filter_keras_submodules(kwargs)
-    backend, layers, models, keras_utils = get_submodules_from_kwargs(submodule_args)
-
     backbone = Backbones.get_backbone(
         backbone_name,
         input_shape=input_shape,

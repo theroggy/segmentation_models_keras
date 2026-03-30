@@ -1,0 +1,12 @@
+name: tests-latest-tf-pip
+channels:
+  - conda-forge
+dependencies:
+  - python
+  - pip
+  - keras
+  # Linting, tests,...
+  - pytest
+  - pytest-cov
+  - pip:
+    - tensorflow

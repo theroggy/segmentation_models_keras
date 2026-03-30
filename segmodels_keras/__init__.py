@@ -25,18 +25,6 @@ def inject_global_losses(func):
     return wrapper
 
 
-def inject_global_submodules(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        kwargs["backend"] = _KERAS_BACKEND
-        kwargs["layers"] = _KERAS_LAYERS
-        kwargs["models"] = _KERAS_MODELS
-        kwargs["utils"] = _KERAS_UTILS
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
 def filter_kwargs(func):
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
@@ -69,10 +57,8 @@ def set_framework(name):
     name = name.lower()
 
     if name == _KERAS_FRAMEWORK_NAME:
-        import efficientnet.keras  # init custom objects
         import keras
     elif name == _TF_KERAS_FRAMEWORK_NAME:
-        import efficientnet.tfkeras  # init custom objects
         from tensorflow import keras
     else:
         raise ValueError(
@@ -118,27 +104,16 @@ from . import losses, metrics, utils
 
 # wrap segmentation models with framework modules
 from .backbones.backbones_factory import Backbones
-from .models.fpn import FPN as _FPN
-from .models.linknet import Linknet as _Linknet
-from .models.pspnet import PSPNet as _PSPNet
-from .models.unet import Unet as _Unet
+from .models.fpn import FPN
+from .models.linknet import Linknet
+from .models.pspnet import PSPNet
+from .models.unet import Unet
 
-Unet = inject_global_submodules(_Unet)
-PSPNet = inject_global_submodules(_PSPNet)
-Linknet = inject_global_submodules(_Linknet)
-FPN = inject_global_submodules(_FPN)
 get_available_backbone_names = Backbones.models_names
 
 
 def get_preprocessing(name):
-    preprocess_input = Backbones.get_preprocessing(name)
-    # add bakcend, models, layers, utils submodules in kwargs
-    preprocess_input = inject_global_submodules(preprocess_input)
-    # delete other kwargs
-    # keras-applications preprocessing raise an error if something
-    # except `backend`, `layers`, `models`, `utils` passed in kwargs
-    preprocess_input = filter_kwargs(preprocess_input)
-    return preprocess_input
+    return Backbones.get_preprocessing(name)
 
 
 __all__ = [

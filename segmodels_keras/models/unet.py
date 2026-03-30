@@ -1,14 +1,9 @@
-from keras_applications import get_submodules_from_kwargs
+from keras import backend, layers, models
+from keras import utils as keras_utils
 
 from ..backbones.backbones_factory import Backbones
 from ._common_blocks import Conv2dBn
-from ._utils import filter_keras_submodules, freeze_model
-
-backend = None
-layers = None
-models = None
-keras_utils = None
-
+from ._utils import freeze_model
 
 # ---------------------------------------------------------------------
 #  Utility functions
@@ -220,11 +215,6 @@ def Unet(
         https://arxiv.org/pdf/1505.04597
 
     """
-
-    global backend, layers, models, keras_utils
-    submodule_args = filter_keras_submodules(kwargs)
-    backend, layers, models, keras_utils = get_submodules_from_kwargs(submodule_args)
-
     if decoder_block_type == "upsampling":
         decoder_block = DecoderUpsamplingX2Block
     elif decoder_block_type == "transpose":
