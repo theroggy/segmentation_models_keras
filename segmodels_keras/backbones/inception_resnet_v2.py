@@ -238,11 +238,10 @@ def InceptionResNetV2(
 
     if input_tensor is None:
         img_input = layers.Input(shape=input_shape)
+    elif not backend.is_keras_tensor(input_tensor):
+        img_input = layers.Input(tensor=input_tensor, shape=input_shape)
     else:
-        if not backend.is_keras_tensor(input_tensor):
-            img_input = layers.Input(tensor=input_tensor, shape=input_shape)
-        else:
-            img_input = input_tensor
+        img_input = input_tensor
 
     # Stem block: 35 x 35 x 192
     x = conv2d_bn(img_input, 32, 3, strides=2, padding="same")
@@ -315,11 +314,10 @@ def InceptionResNetV2(
         # Classification block
         x = layers.GlobalAveragePooling2D(name="avg_pool")(x)
         x = layers.Dense(classes, activation="softmax", name="predictions")(x)
-    else:
-        if pooling == "avg":
-            x = layers.GlobalAveragePooling2D()(x)
-        elif pooling == "max":
-            x = layers.GlobalMaxPooling2D()(x)
+    elif pooling == "avg":
+        x = layers.GlobalAveragePooling2D()(x)
+    elif pooling == "max":
+        x = layers.GlobalMaxPooling2D()(x)
 
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`.
