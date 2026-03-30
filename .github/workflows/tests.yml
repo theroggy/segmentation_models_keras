@@ -39,16 +39,20 @@ jobs:
         # Use openblas instead of mkl saves 600 MB. Linux OK, 50% slower on Windows and OSX!
         extra: ["nomkl"]
         include:
-          - env: minimal
+          - env: minimal-tf-pip
             os: ubuntu-latest
             dev: false
             python: "3.10"
-          - env: minimal
+          - env: minimal-tf-pip
             os: windows-latest
             dev: false
             python: "3.10"
-          - env: latest
+          - env: latest-tf-pip
             os: macos-latest
+            dev: false
+            python: "3.12"
+          - env: latest-tf-pip
+            os: windows-latest
             dev: false
             python: "3.12"
 
