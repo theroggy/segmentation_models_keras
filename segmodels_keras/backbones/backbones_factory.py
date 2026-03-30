@@ -5,10 +5,17 @@ from . import inception_v3 as iv3
 
 
 class BackbonesFactory:
-    # List of layers to take features from backbone in the following order:
-    # (x16, x8, x4, x2, x1) - `x4` mean that features has 4 times less spatial
-    # resolution (Height x Width) than input image.
-    _models = {
+    """Dict with all supported backbones.
+
+    Each backbone is represented as a tuple of 3 elements:
+    1. Backbone class
+    2. Preprocessing function
+    3. List of layers to take features from backbone in the following order:
+       (x16, x8, x4, x2, x1) - `x4` mean that features has 4 times less spatial
+       resolution (Height x Width) than input image.
+    """
+
+    _models = {  # noqa: RUF012
         # ResNets
         "resnet50": (
             ka.ResNet50,
@@ -230,7 +237,11 @@ class BackbonesFactory:
         return list(self.models.keys())
 
     def get_backbone(self, name, *args, **kwargs):
-        model_fn, _, _ = self._models.get(name)
+        backbone = self._models.get(name)
+        if backbone is None:
+            raise ValueError(f"Backbone with name '{name}' is not supported.")
+
+        model_fn, _, _ = backbone
         model = model_fn(*args, **kwargs)
         return model
 

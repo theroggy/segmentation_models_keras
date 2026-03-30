@@ -11,15 +11,9 @@ https://github.com/tensorflow/models/tree/master/research/slim#pre-trained-model
    Residual Connections on Learning](https://arxiv.org/abs/1602.07261) (AAAI 2017)
 """
 
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import os
 
-from keras import backend
-from keras import layers
-from keras import models
+from keras import backend, layers, models
 from keras import utils as keras_utils
 from keras_applications import imagenet_utils
 
@@ -173,7 +167,7 @@ def InceptionResNetV2(
     input_shape=None,
     pooling=None,
     classes=1000,
-    **kwargs,
+    **kwargs,  # noqa: ARG001
 ):
     """Instantiates the Inception-ResNet v2 architecture.
     Optionally loads weights pre-trained on ImageNet.
