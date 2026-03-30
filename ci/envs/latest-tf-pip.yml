@@ -6,7 +6,6 @@ dependencies:
   - pip
   - keras-applications>=1.0.7,<=1.0.8
   - keras
-  - numpy <2
   # Linting, tests,...
   - pytest
   - pytest-cov

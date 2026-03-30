@@ -79,7 +79,7 @@ jobs:
       - name: Test
         run: >-
           pytest
-          --numprocesses 4 --color=yes 
+          --color=yes
           --cov=geofileops --cov-append --cov-report term-missing --cov-report 
           xml tests/
 

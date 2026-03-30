@@ -1,4 +1,4 @@
-name: tests-minimal
+name: tests-latest
 channels:
   - conda-forge
 dependencies:
@@ -7,7 +7,7 @@ dependencies:
   - keras-applications>=1.0.7,<=1.0.8
   - keras
   - tensorflow
-  - numpy <2
-  # Linting, tests,...
+  # Dependencies needed to run tests,...
+  - numpy
   - pytest
   - pytest-cov
