@@ -35,7 +35,7 @@ compatibility,... or support for all features is not guaranteed.
    :caption: Contents:
 
    install
-   user_guide
+   tutorial
    api
    support
 
