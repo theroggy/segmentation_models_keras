@@ -1,7 +1,8 @@
-import functools
+import functools  # noqa: I001
 import os
 
-from _version import __version__
+# __version__ should be defined as soon as possible
+from segmodels_keras._version import __version__
 
 from segmodels_keras import base
 
