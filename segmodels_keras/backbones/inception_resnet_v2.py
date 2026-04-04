@@ -13,28 +13,34 @@ https://github.com/tensorflow/models/tree/master/research/slim#pre-trained-model
 - [Inception-v4, Inception-ResNet and the Impact of
    Residual Connections on Learning](https://arxiv.org/abs/1602.07261) (AAAI 2017)
 
-
+Differences with the original implementation in keras.applications:
+- For e.g. in the `conv2d_bn` blocks, padding="same" is used instead of "valid". This is
+  to make the sizes of the outputs of the layers the correct size for the skip
+  connections for the decoders in the segmentation models. It does not affect the
+  weights of the layers, so we can still use the pre-trained weights from the original
+  implementation.
+  An alternative solution is to add a padding layer before the skip connections, but
+  that would add extra parameters to the model, which we want to avoid as that might
+  also give issues when loading weights that were saved with an older version. An
+  example where this solution is used/shown can be found here:
+  https://github.com/ayushdabra/dubai-satellite-imagery-segmentation/blob/9446e16134e752dda080ba9d65be18ea47fa26a9/get_activations.py#L40
+- The original implementation uses different imports as it is internal in keras, and
+  here we need to use the public API of keras.
 """
 
-from keras.src import backend, layers
-from keras.src.api_export import keras_export
-from keras.src.applications import imagenet_utils
-from keras.src.layers.layer import Layer
-from keras.src.models import Functional
-from keras.src.ops import operation_utils
-from keras.src.utils import file_utils
+from pathlib import Path
+
+from keras import backend, layers
+from keras.applications import imagenet_utils
+from keras.layers import Layer
+from keras.models import Functional
+from keras.utils import get_file, get_source_inputs
 
 BASE_WEIGHT_URL = (
     "https://storage.googleapis.com/tensorflow/keras-applications/inception_resnet_v2/"
 )
 
 
-@keras_export(
-    [
-        "keras.applications.inception_resnet_v2.InceptionResNetV2",
-        "keras.applications.InceptionResNetV2",
-    ]
-)
 def InceptionResNetV2(
     include_top=True,
     weights="imagenet",
@@ -110,7 +116,7 @@ def InceptionResNetV2(
     Returns:
         A model instance.
     """
-    if not (weights in {"imagenet", None} or file_utils.exists(weights)):
+    if not (weights in {"imagenet", None} or Path(weights).exists()):
         raise ValueError(
             "The `weights` argument should be either "
             "`None` (random initialization), `imagenet` "
@@ -226,7 +232,7 @@ def InceptionResNetV2(
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`.
     if input_tensor is not None:
-        inputs = operation_utils.get_source_inputs(input_tensor)
+        inputs = get_source_inputs(input_tensor)
     else:
         inputs = img_input
 
@@ -237,7 +243,7 @@ def InceptionResNetV2(
     if weights == "imagenet":
         if include_top:
             fname = "inception_resnet_v2_weights_tf_dim_ordering_tf_kernels.h5"
-            weights_path = file_utils.get_file(
+            weights_path = get_file(
                 fname,
                 BASE_WEIGHT_URL + fname,
                 cache_subdir="models",
@@ -245,7 +251,7 @@ def InceptionResNetV2(
             )
         else:
             fname = "inception_resnet_v2_weights_tf_dim_ordering_tf_kernels_notop.h5"
-            weights_path = file_utils.get_file(
+            weights_path = get_file(
                 fname,
                 BASE_WEIGHT_URL + fname,
                 cache_subdir="models",
@@ -398,7 +404,6 @@ def inception_resnet_block(x, scale, block_type, block_idx, activation="relu"):
     return x
 
 
-@keras_export("keras.applications.inception_resnet_v2.preprocess_input")
 def preprocess_input(x, data_format=None):
     """Preprocesses a numpy array encoding a batch of images.
 
@@ -411,7 +416,6 @@ def preprocess_input(x, data_format=None):
     return imagenet_utils.preprocess_input(x, data_format=data_format, mode="tf")
 
 
-@keras_export("keras.applications.inception_resnet_v2.decode_predictions")
 def decode_predictions(preds, top=5):
     return imagenet_utils.decode_predictions(preds, top=top)
 
