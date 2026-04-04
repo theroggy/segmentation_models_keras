@@ -16,17 +16,25 @@ https://github.com/tensorflow/models/tree/master/research/slim#pre-trained-model
 
 """
 
-import os
-import warnings
-
-from keras import backend, layers, models
-from keras import utils as keras_utils
-from keras.applications import imagenet_utils
+from keras.src import backend, layers
+from keras.src.api_export import keras_export
+from keras.src.applications import imagenet_utils
+from keras.src.layers.layer import Layer
+from keras.src.models import Functional
+from keras.src.ops import operation_utils
+from keras.src.utils import file_utils
 
 BASE_WEIGHT_URL = (
-    "https://github.com/fchollet/deep-learning-models/releases/download/v0.7/"
+    "https://storage.googleapis.com/tensorflow/keras-applications/inception_resnet_v2/"
 )
 
+
+@keras_export(
+    [
+        "keras.applications.inception_resnet_v2.InceptionResNetV2",
+        "keras.applications.InceptionResNetV2",
+    ]
+)
 def InceptionResNetV2(
     include_top=True,
     weights="imagenet",
@@ -34,23 +42,47 @@ def InceptionResNetV2(
     input_shape=None,
     pooling=None,
     classes=1000,
-    **kwargs,  # noqa: ARG001
+    classifier_activation="softmax",
+    name="inception_resnet_v2",
 ):
     """Instantiates the Inception-ResNet v2 architecture.
-    Optionally loads weights pre-trained on ImageNet.
-    Note that the data format convention used by the model is
-    the one specified in your Keras config at `~/.keras/keras.json`.
-    # Arguments
+
+    Reference:
+    - [Inception-v4, Inception-ResNet and the Impact of
+       Residual Connections on Learning](https://arxiv.org/abs/1602.07261)
+      (AAAI 2017)
+
+    This function returns a Keras image classification model,
+    optionally loaded with weights pre-trained on ImageNet.
+
+    For image classification use cases, see
+    [this page for detailed examples](
+      https://keras.io/api/applications/#usage-examples-for-image-classification-models).
+
+    For transfer learning use cases, make sure to read the
+    [guide to transfer learning & fine-tuning](
+      https://keras.io/guides/transfer_learning/).
+
+    Note: each Keras Application expects a specific kind of
+    input preprocessing. For InceptionResNetV2, call
+    `keras.applications.inception_resnet_v2.preprocess_input`
+    on your inputs before passing them to the model.
+    `inception_resnet_v2.preprocess_input`
+    will scale input pixels between -1 and 1.
+
+    Args:
         include_top: whether to include the fully-connected
             layer at the top of the network.
         weights: one of `None` (random initialization),
-              'imagenet' (pre-training on ImageNet),
-              or the path to the weights file to be loaded.
-        input_tensor: optional Keras tensor (i.e. output of `layers.Input()`)
+            `"imagenet"` (pre-training on ImageNet),
+            or the path to the weights file to be loaded.
+        input_tensor: optional Keras tensor
+            (i.e. output of `layers.Input()`)
             to use as image input for the model.
         input_shape: optional shape tuple, only to be specified
             if `include_top` is `False` (otherwise the input shape
-            has to be `(299, 299, 3)` (with `'channels_last'` data format)
+            has to be `(299, 299, 3)`
+            (with `'channels_last'` data format)
             or `(3, 299, 299)` (with `'channels_first'` data format).
             It should have exactly 3 inputs channels,
             and width and height should be no smaller than 75.
@@ -65,15 +97,20 @@ def InceptionResNetV2(
                 the output of the model will be a 2D tensor.
             - `'max'` means that global max pooling will be applied.
         classes: optional number of classes to classify images
-            into, only to be specified if `include_top` is `True`, and
-            if no `weights` argument is specified.
-    # Returns
-        A Keras `Model` instance.
-    # Raises
-        ValueError: in case of invalid argument for `weights`,
-            or invalid input shape.
+            into, only to be specified if `include_top` is `True`,
+            and if no `weights` argument is specified.
+        classifier_activation: A `str` or callable.
+            The activation function to use on the "top" layer.
+            Ignored unless `include_top=True`.
+            Set `classifier_activation=None` to return the logits
+            of the "top" layer. When loading pretrained weights,
+            `classifier_activation` can only be `None` or `"softmax"`.
+        name: The name of the model (string).
+
+    Returns:
+        A model instance.
     """
-    if not (weights in {"imagenet", None} or os.path.exists(weights)):
+    if not (weights in {"imagenet", None} or file_utils.exists(weights)):
         raise ValueError(
             "The `weights` argument should be either "
             "`None` (random initialization), `imagenet` "
@@ -83,12 +120,13 @@ def InceptionResNetV2(
 
     if weights == "imagenet" and include_top and classes != 1000:
         raise ValueError(
-            'If using `weights` as `"imagenet"` with `include_top`'
-            " as true, `classes` should be 1000"
+            'If using `weights="imagenet"` with `include_top=True`, '
+            "`classes` should be 1000. "
+            f"Received classes={classes}"
         )
 
     # Determine proper input shape
-    input_shape = _obtain_input_shape(
+    input_shape = imagenet_utils.obtain_input_shape(
         input_shape,
         default_size=299,
         min_size=32,
@@ -99,10 +137,11 @@ def InceptionResNetV2(
 
     if input_tensor is None:
         img_input = layers.Input(shape=input_shape)
-    elif not backend.is_keras_tensor(input_tensor):
-        img_input = layers.Input(tensor=input_tensor, shape=input_shape)
     else:
-        img_input = input_tensor
+        if not backend.is_keras_tensor(input_tensor):
+            img_input = layers.Input(tensor=input_tensor, shape=input_shape)
+        else:
+            img_input = input_tensor
 
     # Stem block: 35 x 35 x 192
     x = conv2d_bn(img_input, 32, 3, strides=2, padding="same")
@@ -174,27 +213,31 @@ def InceptionResNetV2(
     if include_top:
         # Classification block
         x = layers.GlobalAveragePooling2D(name="avg_pool")(x)
-        x = layers.Dense(classes, activation="softmax", name="predictions")(x)
-    elif pooling == "avg":
-        x = layers.GlobalAveragePooling2D()(x)
-    elif pooling == "max":
-        x = layers.GlobalMaxPooling2D()(x)
+        imagenet_utils.validate_activation(classifier_activation, weights)
+        x = layers.Dense(classes, activation=classifier_activation, name="predictions")(
+            x
+        )
+    else:
+        if pooling == "avg":
+            x = layers.GlobalAveragePooling2D()(x)
+        elif pooling == "max":
+            x = layers.GlobalMaxPooling2D()(x)
 
     # Ensure that the model takes into account
     # any potential predecessors of `input_tensor`.
     if input_tensor is not None:
-        inputs = keras_utils.get_source_inputs(input_tensor)
+        inputs = operation_utils.get_source_inputs(input_tensor)
     else:
         inputs = img_input
 
     # Create model.
-    model = models.Model(inputs, x, name="inception_resnet_v2")
+    model = Functional(inputs, x, name=name)
 
     # Load weights.
     if weights == "imagenet":
         if include_top:
             fname = "inception_resnet_v2_weights_tf_dim_ordering_tf_kernels.h5"
-            weights_path = keras_utils.get_file(
+            weights_path = file_utils.get_file(
                 fname,
                 BASE_WEIGHT_URL + fname,
                 cache_subdir="models",
@@ -202,7 +245,7 @@ def InceptionResNetV2(
             )
         else:
             fname = "inception_resnet_v2_weights_tf_dim_ordering_tf_kernels_notop.h5"
-            weights_path = keras_utils.get_file(
+            weights_path = file_utils.get_file(
                 fname,
                 BASE_WEIGHT_URL + fname,
                 cache_subdir="models",
@@ -226,7 +269,8 @@ def conv2d_bn(
     name=None,
 ):
     """Utility function to apply conv + BN.
-    # Arguments
+
+    Args:
         x: input tensor.
         filters: filters in `Conv2D`.
         kernel_size: kernel size as in `Conv2D`.
@@ -234,9 +278,10 @@ def conv2d_bn(
         padding: padding mode in `Conv2D`.
         activation: activation in `Conv2D`.
         use_bias: whether to use a bias in `Conv2D`.
-        name: name of the ops; will become `name + '_ac'` for the activation
-            and `name + '_bn'` for the batch norm layer.
-    # Returns
+        name: name of the ops; will become `name + '_ac'`
+            for the activation and `name + '_bn'` for the batch norm layer.
+
+    Returns:
         Output tensor after applying `Conv2D` and `BatchNormalization`.
     """
     x = layers.Conv2D(
@@ -249,41 +294,55 @@ def conv2d_bn(
     )(x)
     if not use_bias:
         bn_axis = 1 if backend.image_data_format() == "channels_first" else 3
-        bn_name = None if name is None else name + "_bn"
+        bn_name = None if name is None else f"{name}_bn"
         x = layers.BatchNormalization(axis=bn_axis, scale=False, name=bn_name)(x)
     if activation is not None:
-        ac_name = None if name is None else name + "_ac"
+        ac_name = None if name is None else f"{name}_ac"
         x = layers.Activation(activation, name=ac_name)(x)
     return x
 
 
+class CustomScaleLayer(Layer):
+    def __init__(self, scale, **kwargs):
+        super().__init__(**kwargs)
+        self.scale = scale
+
+    def get_config(self):
+        config = super().get_config()
+        config.update({"scale": self.scale})
+        return config
+
+    def call(self, inputs):
+        return inputs[0] + inputs[1] * self.scale
+
+
 def inception_resnet_block(x, scale, block_type, block_idx, activation="relu"):
     """Adds a Inception-ResNet block.
+
     This function builds 3 types of Inception-ResNet blocks mentioned
     in the paper, controlled by the `block_type` argument (which is the
     block name used in the official TF-slim implementation):
         - Inception-ResNet-A: `block_type='block35'`
         - Inception-ResNet-B: `block_type='block17'`
         - Inception-ResNet-C: `block_type='block8'`
-    # Arguments
+
+    Args:
         x: input tensor.
-        scale: scaling factor to scale the residuals (i.e., the output of
-            passing `x` through an inception module) before adding them
-            to the shortcut branch.
-            Let `r` be the output from the residual branch,
+        scale: scaling factor to scale the residuals
+            (i.e., the output of passing `x` through an inception module)
+            before adding them to the shortcut
+            branch. Let `r` be the output from the residual branch,
             the output of this block will be `x + scale * r`.
-        block_type: `'block35'`, `'block17'` or `'block8'`, determines
-            the network structure in the residual branch.
+        block_type: `'block35'`, `'block17'` or `'block8'`,
+            determines the network structure in the residual branch.
         block_idx: an `int` used for generating layer names.
-            The Inception-ResNet blocks
-            are repeated many times in this network.
-            We use `block_idx` to identify
-            each of the repetitions. For example,
-            the first Inception-ResNet-A block
-            will have `block_type='block35', block_idx=0`,
-            and the layer names will have
-            a common prefix `'block35_0'`.
-        activation: activation function to use at the end of the block
+            The Inception-ResNet blocks are repeated many times
+            in this network. We use `block_idx` to identify each
+            of the repetitions. For example, the first
+            Inception-ResNet-A block will have
+            `block_type='block35', block_idx=0`, and the layer names
+            will have a common prefix `'block35_0'`.
+        activation: activation function to use at the end of the block.
             (see [activations](../activations.md)).
             When `activation=None`, no activation is applied
             (i.e., "linear" activation: `a(x) = x`).
@@ -292,6 +351,7 @@ def inception_resnet_block(x, scale, block_type, block_idx, activation="relu"):
     # Raises
         ValueError: if `block_type` is not one of `'block35'`,
             `'block17'` or `'block8'`.
+        Output tensor for the block.
     """
     if block_type == "block35":
         branch_0 = conv2d_bn(x, 32, 1)
@@ -317,154 +377,48 @@ def inception_resnet_block(x, scale, block_type, block_idx, activation="relu"):
         raise ValueError(
             "Unknown Inception-ResNet block type. "
             'Expects "block35", "block17" or "block8", '
-            "but got: " + str(block_type)
+            f"but got: {block_type}"
         )
 
-    block_name = block_type + "_" + str(block_idx)
+    block_name = f"{block_type}_{block_idx}"
     channel_axis = 1 if backend.image_data_format() == "channels_first" else 3
-    mixed = layers.Concatenate(axis=channel_axis, name=block_name + "_mixed")(branches)
+    mixed = layers.Concatenate(axis=channel_axis, name=f"{block_name}_mixed")(branches)
     up = conv2d_bn(
         mixed,
         x.shape[channel_axis],
         1,
         activation=None,
         use_bias=True,
-        name=block_name + "_conv",
+        name=f"{block_name}_conv",
     )
 
-    x = layers.Lambda(
-        lambda inputs, scale: inputs[0] + inputs[1] * scale,
-        output_shape=x.shape[1:],
-        arguments={"scale": scale},
-        name=block_name,
-    )([x, up])
+    x = CustomScaleLayer(scale)([x, up])
     if activation is not None:
-        x = layers.Activation(activation, name=block_name + "_ac")(x)
+        x = layers.Activation(activation, name=f"{block_name}_ac")(x)
     return x
 
 
-def preprocess_input(x, **kwargs):
+@keras_export("keras.applications.inception_resnet_v2.preprocess_input")
+def preprocess_input(x, data_format=None):
     """Preprocesses a numpy array encoding a batch of images.
-    # Arguments
+
+    Args:
         x: a 4D numpy array consists of RGB values within [0, 255].
-    # Returns
+
+    Returns:
         Preprocessed array.
     """
-    return imagenet_utils.preprocess_input(x, mode="tf", **kwargs)
+    return imagenet_utils.preprocess_input(x, data_format=data_format, mode="tf")
 
 
-def _obtain_input_shape(
-    input_shape, default_size, min_size, data_format, require_flatten, weights=None
-):
-    """Internal utility to compute/validate a model's input shape.
+@keras_export("keras.applications.inception_resnet_v2.decode_predictions")
+def decode_predictions(preds, top=5):
+    return imagenet_utils.decode_predictions(preds, top=top)
 
-    # Arguments
-        input_shape: Either None (will return the default network input shape),
-            or a user-provided shape to be validated.
-        default_size: Default input width/height for the model.
-        min_size: Minimum input width/height accepted by the model.
-        data_format: Image data format to use.
-        require_flatten: Whether the model is expected to
-            be linked to a classifier via a Flatten layer.
-        weights: One of `None` (random initialization)
-            or 'imagenet' (pre-training on ImageNet).
-            If weights='imagenet' input channels must be equal to 3.
 
-    # Returns
-        An integer shape tuple (may include None entries).
-
-    # Raises
-        ValueError: In case of invalid argument values.
-    """
-    if weights != "imagenet" and input_shape and len(input_shape) == 3:
-        if data_format == "channels_first":
-            if input_shape[0] not in {1, 3}:
-                warnings.warn(  # noqa: B028
-                    "This model usually expects 1 or 3 input channels. "
-                    "However, it was passed an input_shape with "
-                    + str(input_shape[0])
-                    + " input channels."
-                )
-            default_shape = (input_shape[0], default_size, default_size)
-        else:
-            if input_shape[-1] not in {1, 3}:
-                warnings.warn(  # noqa: B028
-                    "This model usually expects 1 or 3 input channels. "
-                    "However, it was passed an input_shape with "
-                    + str(input_shape[-1])
-                    + " input channels."
-                )
-            default_shape = (default_size, default_size, input_shape[-1])
-    else:
-        if data_format == "channels_first":
-            default_shape = (3, default_size, default_size)
-        else:
-            default_shape = (default_size, default_size, 3)
-    if weights == "imagenet" and require_flatten:
-        if input_shape is not None:
-            if input_shape != default_shape:
-                raise ValueError(
-                    "When setting `include_top=True` "
-                    "and loading `imagenet` weights, "
-                    "`input_shape` should be " + str(default_shape) + "."
-                )
-        return default_shape
-    if input_shape:
-        if data_format == "channels_first":
-            if input_shape is not None:
-                if len(input_shape) != 3:
-                    raise ValueError("`input_shape` must be a tuple of three integers.")
-                if input_shape[0] != 3 and weights == "imagenet":
-                    raise ValueError(
-                        "The input must have 3 channels; got "
-                        "`input_shape=" + str(input_shape) + "`"
-                    )
-                if (input_shape[1] is not None and input_shape[1] < min_size) or (
-                    input_shape[2] is not None and input_shape[2] < min_size
-                ):
-                    raise ValueError(
-                        "Input size must be at least "
-                        + str(min_size)
-                        + "x"
-                        + str(min_size)
-                        + "; got `input_shape="
-                        + str(input_shape)
-                        + "`"
-                    )
-        else:
-            if input_shape is not None:
-                if len(input_shape) != 3:
-                    raise ValueError("`input_shape` must be a tuple of three integers.")
-                if input_shape[-1] != 3 and weights == "imagenet":
-                    raise ValueError(
-                        "The input must have 3 channels; got "
-                        "`input_shape=" + str(input_shape) + "`"
-                    )
-                if (input_shape[0] is not None and input_shape[0] < min_size) or (
-                    input_shape[1] is not None and input_shape[1] < min_size
-                ):
-                    raise ValueError(
-                        "Input size must be at least "
-                        + str(min_size)
-                        + "x"
-                        + str(min_size)
-                        + "; got `input_shape="
-                        + str(input_shape)
-                        + "`"
-                    )
-    else:
-        if require_flatten:
-            input_shape = default_shape
-        else:
-            if data_format == "channels_first":
-                input_shape = (3, None, None)
-            else:
-                input_shape = (None, None, 3)
-    if require_flatten:
-        if None in input_shape:
-            raise ValueError(
-                "If `include_top` is True, "
-                "you should specify a static `input_shape`. "
-                "Got `input_shape=" + str(input_shape) + "`"
-            )
-    return input_shape
+preprocess_input.__doc__ = imagenet_utils.PREPROCESS_INPUT_DOC.format(
+    mode="",
+    ret=imagenet_utils.PREPROCESS_INPUT_RET_DOC_TF,
+    error=imagenet_utils.PREPROCESS_INPUT_ERROR_DOC,
+)
+decode_predictions.__doc__ = imagenet_utils.decode_predictions.__doc__
