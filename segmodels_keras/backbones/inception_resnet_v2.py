@@ -30,10 +30,9 @@ Differences with the original implementation in keras.applications:
 
 from pathlib import Path
 
-from keras import backend, layers
+from keras import backend, layers, models
 from keras.applications import imagenet_utils
 from keras.layers import Layer
-from keras.models import Functional
 from keras.utils import get_file, get_source_inputs
 
 BASE_WEIGHT_URL = (
@@ -237,7 +236,7 @@ def InceptionResNetV2(
         inputs = img_input
 
     # Create model.
-    model = Functional(inputs, x, name=name)
+    model = models.Model(inputs, x, name=name)
 
     # Load weights.
     if weights == "imagenet":
