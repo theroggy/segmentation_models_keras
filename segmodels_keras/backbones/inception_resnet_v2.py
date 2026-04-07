@@ -26,8 +26,9 @@ Differences with the original implementation in keras.applications:
   https://github.com/ayushdabra/dubai-satellite-imagery-segmentation/blob/9446e16134e752dda080ba9d65be18ea47fa26a9/get_activations.py#L40
 - The original implementation uses different imports as it is internal in keras, and
   here we need to use the public API of keras.
-- Use Lambda layer instead of CustomScaleLayer as it avoids having to define a custom
-  layer and because otherwise "old" weights are incompatible.
+- Use Lambda layer instead of CustomScaleLayer because:
+    - it avoids having to define + pass in a custom layer when loading the model
+    - otherwise "old" weights cannot be loaded when using keras 3
 """
 
 import warnings

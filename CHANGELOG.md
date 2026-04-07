@@ -18,7 +18,7 @@
  - Add support for keras v3 (#5)
  - Use implementation + weights of keras.applications for inceptionresnetv2 and just
    retain the customizations needed for the skip connections + to keep old weight files
-   compatible (#13, #14, #16)
+   compatible when loaded with keras 3 (#13, #14, #16)
  - Improve code consistency using ruff (#4)
 
 ### segmentation_models
